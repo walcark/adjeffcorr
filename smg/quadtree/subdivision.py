@@ -123,6 +123,7 @@ if __name__ == "__main__":
 
     from smartg.smartg import LambSurface, Albedo_cst, Environment
     from smartg.atmosphere import AerOPAC, AtmAFGL
+    from smg.classes.custenv import custom_environment
     from smg.classes.sunsat import SunSat
     from smg.quadtree.templates import rho_toa
     from general.plot2d import show_quadtree_pixels
@@ -133,7 +134,19 @@ if __name__ == "__main__":
     atm = AtmAFGL("afglms", [aer], grid=np.linspace(100., 0., 101))
 
     surface = LambSurface(ALB=Albedo_cst(1.0))
-    environment = Environment(ENV=2, ENV_SIZE=15**2)
+    #environment = Environment(ENV=2, ENV_SIZE=15**2)
+
+    x_coords = np.linspace(-50, 50, 1000)
+    y_coords = x_coords
+    xx, yy = np.meshgrid(x_coords, y_coords)
+    r_coords = np.sqrt(xx**2 + yy**2)
+    arr = np.exp(-(r_coords/15)**2)
+    environment = custom_environment(
+        x_coords=x_coords,
+        y_coords=y_coords,
+        rhos=arr,
+        n_alb=100
+    )
     func_kwargs = dict(wavelength=550.0,
                         nb_photons=1E4,
                         sunsat=sunsat,
