@@ -25,6 +25,7 @@ Thumbs.db
 *.log
 *.tmp
 *.bak
+*.png
 
 # Test artifacts
 .tox/
