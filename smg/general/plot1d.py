@@ -17,23 +17,12 @@ def plot_scientific(
     colors: Optional[List[str]] = None,
     savepath: Optional[str] = None,
     show: bool = True,
+    ax: Optional[plt.Axes] = None,
 ):
     """
     Plot one or more 1D curves using a clean scientific style.
 
-    Args:
-        x (np.ndarray): X-axis values.
-        ys (List[np.ndarray]): List of y-axis data series.
-        labels (List[str], optional): Labels for each data series.
-        xlabel (str): Label for the X-axis.
-        ylabel (str): Label for the Y-axis.
-        title (str, optional): Plot title.
-        xlim (tuple, optional): X-axis limits.
-        ylim (tuple, optional): Y-axis limits.
-        figsize (tuple): Figure size in inches.
-        colors (list, optional): Custom colors for each curve.
-        savepath (str, optional): Path to save the figure.
-        show (bool): Whether to display the plot immediately.
+    If `ax` is provided, plot on that axes. Otherwise, create a new figure.
     """
     plt.rcParams.update({
         "font.size": 12,
@@ -48,7 +37,12 @@ def plot_scientific(
         "figure.dpi": 150,
     })
 
-    fig, ax = plt.subplots(figsize=figsize)
+    created_fig = False
+    if ax is None:
+        fig, ax = plt.subplots(figsize=figsize)
+        created_fig = True
+    else:
+        fig = ax.figure
 
     for i, y in enumerate(ys):
         label = labels[i] if labels and i < len(labels) else None
@@ -63,7 +57,7 @@ def plot_scientific(
         ax.set_xlim(*xlim)
     else:
         ax.set_xlim(np.min(x), np.max(x))
-    if (yscale == "log"):
+    if yscale == "log":
         ax.set_yscale("log")
     else:
         if ylim:
@@ -83,8 +77,7 @@ def plot_scientific(
 
     fig.tight_layout()
 
-    if savepath:
+    if savepath and created_fig:
         fig.savefig(savepath)
-
-    if show:
+    if show and created_fig:
         plt.show()
