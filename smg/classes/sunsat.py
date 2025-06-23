@@ -38,7 +38,6 @@ class SunSat:
         sin_vaa: float = np.sin(np.radians(180 - self.vaa_deg))
         x: float  = (self.sat_height * tan_vza) * cos_vaa
         y: float = (self.sat_height * tan_vza) * sin_vaa
-        print("Computed satellite relative position: (%.2f, %.2f)", x, y)
         return (np.round(x, 4), np.round(y, 4))
 
     def _le(self, za: float, aa: float) -> Dict[str, float]:

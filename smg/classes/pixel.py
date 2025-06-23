@@ -42,10 +42,6 @@ class Pixel:
         """
         self.values = values
         if (self.depth < self.min_depth):
-            print(
-                "Forced subdivision at depth=%d (min_depth=%d)", 
-                self.depth, self.min_depth
-            )
             return True
         max_diff = max(values) - min(values)
         return (self.depth < self.max_depth) and (max_diff > self.threshold)

@@ -21,7 +21,7 @@ def rho_toa(
     Calculates the Top Of Atmosphere reflectance (TOA) 
     for the given atmosphere and environment on a 2D grid.
     """
-    print("Calling rho_toa with %d points", len(points))
+    print(f"Calling rho_toa with {len(points)} points ...")
     # Grid of satellite positions
     x_sat, y_sat = sunsat.satellite_relative_position
     sat_locs = [(x + x_sat, y + y_sat) for (x, y) in points]
@@ -53,7 +53,7 @@ def rho_toa(
         NBPHOTONS=nb_photons_tot,
         NF=nb_angles,
     )
-    print("Finished rho_toa computation")
+    print("Finished rho_toa computation.")
     return list(mlut["I_up (TOA)"][:, 0])
 
 
@@ -72,7 +72,7 @@ def rho_coupling(
     Direct calculation of 'E_coupling' for a given 
     atmosphere and environment on a 2D grid.
     """
-    print("Calling rho_coupling with %d points", len(points))
+    print(f"Calling rho_coupling with {len(points)} points ...")
 
     lamb_emit_boa: List[Sensor] = [
         Sensor(
@@ -97,6 +97,6 @@ def rho_coupling(
     )
     e_coupling: np.ndarray = mlut["I_up (TOA)"][:, 0]
 
-    print("Finished rho_coupling computation")
+    print("Finished rho_coupling computation.")
     return e_coupling
 
