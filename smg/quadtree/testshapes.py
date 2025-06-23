@@ -49,7 +49,7 @@ def smooth_disk(
 
 if __name__ == "__main__":
 
-    from smg.general.plot1d import plot_scientific
+    from general.plot1d import plot_scientific
 
     sigma = 5.0
     rmax = 15.0
@@ -62,10 +62,17 @@ if __name__ == "__main__":
     gauss_vals = gaussian(coords, sigma)
     disk_vals = smooth_disk(coords, rmax, smooth_factor)
 
+    from general.constants import IMG_PATH
+    print(IMG_PATH)
+
     plot_scientific(
         x=radius, ys=[gauss_vals, disk_vals],
-        labels=[r"Gaussian: $\sigma = 5$", r"Disk: $r_{\max} = 15$"],
+        labels=[
+            rf"Gaussian: $\sigma = {sigma}$", 
+            rf"Disk: $r_{{\max}} = {rmax}$~;~f={smooth_factor}"
+        ],
         xlabel="Distance [km]",
         ylabel="Normalized value",
-        title="Comparison of Radial Kernels"
+        title="Comparison of Radial Kernels",
+        savepath=IMG_PATH/"testshapes.png"
     )

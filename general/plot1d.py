@@ -25,12 +25,15 @@ def plot_scientific(
     If `ax` is provided, plot on that axes. Otherwise, create a new figure.
     """
     plt.rcParams.update({
+        "text.usetex": True,
+        "font.family": "serif",
+        "text.latex.preamble": r"\usepackage{amsmath}",
         "font.size": 12,
-        "axes.labelsize": 14,
-        "axes.titlesize": 15,
-        "legend.fontsize": 13,
-        "xtick.labelsize": 12,
-        "ytick.labelsize": 12,
+        "axes.labelsize": 20,
+        "axes.titlesize": 20,
+        "legend.fontsize": 18,
+        "xtick.labelsize": 15,
+        "ytick.labelsize": 15,
         "axes.grid": True,
         "grid.linestyle": "--",
         "grid.alpha": 0.6,
@@ -52,7 +55,7 @@ def plot_scientific(
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
     if title:
-        ax.set_title(title)
+        ax.set_title(title, pad=10)
     if xlim:
         ax.set_xlim(*xlim)
     else:
