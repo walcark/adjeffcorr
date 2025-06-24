@@ -37,3 +37,6 @@ build/
 
 # Auto-generated __init__.py files (optional)
 **/__init__.py
+
+# Plantuml files
+*.puml
