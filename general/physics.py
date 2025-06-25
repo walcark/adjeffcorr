@@ -12,7 +12,7 @@ def surface_mot_sos(
 
 
 def height_mot_sos(
-    surface_mot: float, 
+    surface_mot: float | np.ndarray, 
     h: float | np.ndarray, 
     href: float
 ) -> float | np.ndarray:
@@ -21,7 +21,9 @@ def height_mot_sos(
     reference height for the exponential model of the SOS_ABS_V5.1
     model.
     """
-    return surface_mot * np.exp(-h / href)
+    print(surface_mot.shape)
+    print(h.shape)
+    return surface_mot[:, None] * np.exp(-h[None, :] / href)
 
 
 def molecular_profile(
@@ -34,20 +36,18 @@ def molecular_profile(
     as input to Smart-G for a given wavelength, height array and 
     reference height.
     """
-    wavelength = np.asarray([wl])
+    if isinstance(wl, float):
+        wl = [wl]
+    if isinstance(h, float):
+        h = [h]
+    wl = np.asarray(wl)
     h = np.asarray(h)
-    
-    # Préparer la sortie avec les dimensions appropriées
-    out = np.zeros((len(wavelength), len(h)))
-    
-    # Calculer pour chaque longueur d'onde et chaque altitude
-    for i, wl in enumerate(wavelength):
-        surf_mot = surface_mot_sos(wavelength)
-        out[i, :] = height_mot_sos(surf_mot, h, href)
 
-    # Calcul de la différence colonne à colonne
-    out_diff = np.zeros((len(wavelength), len(h)))
+    surface_mot = surface_mot_sos(wl)
+    full_mot = height_mot_sos(surface_mot, h, href)
+    full_kext = np.zeros_like(full_mot)
+
     for j in range(len(h)-1):
-        out_diff[:, j+1] = out[:, j+1] - out[:, j]
+        full_kext[:, j+1] = full_mot[:, j+1] - full_mot[:, j]
 
-    return out_diff
+    return full_kext
