@@ -1,94 +1,123 @@
-from smartg.atmosphere import AtmAFGL, AerOPAC
-from dataclasses import dataclass
-from typing import List, Any
+from typing import List, Tuple
 import numpy as np
-
+from numpy.typing import ArrayLike
+from smartg.atmosphere import AtmAFGL, AerOPAC
+from smartg.smartg import multi_profiles
 from general.physics import molecular_profile
-from general.constants import GRID, PFGRID
+from luts.luts import LUT
+from smartg.smartg import Smartg
+from smartg.tools.smartg_view import input_view
+import matplotlib.pyplot as plt
 
-#TODO: make use of multi_profiles in smartg.py
+from general.constants import Atmosphere, GRID, PFGRID
 
-@dataclass
-class AtmFact:
-    aot: float
-    wl: float
-    w_ref: float = 550.0
-    aer_type: str = "continental_average"
-    atmo_type: str = "afglt"
-    grid: np.ndarray = GRID
-    pfgrid: np.ndarray = PFGRID
 
-    def __post_init__(self) -> None:
-        self._params = {
-            "wl": self.wl,
-            "aot": self.aot,
-            "aer_type": self.aer_type,
-            "atmo_type": self.atmo_type,
-        }
-        self.atm = self._build_atmosphere()
-
-    def create_standard_atm(self) -> AtmAFGL:
-        """Returns a standard atmosphere (with complete absorption)."""
-        return self.atm
-
-    def create_atm_no_abs(self) -> AtmAFGL:
-        """Returns an atmosphere without gaseous absorption."""
-        atm_modified = self._build_atmosphere(rm_gaz_abs=True)
-        print("Created atmosphere without gaseous absorption.")
-        return atm_modified
-
-    def create_atm_no_abs_sos_ray(self) -> AtmAFGL:
-        cust_pro_ray = molecular_profile(wl=self.wl, h=GRID, href=8.0)
-        atm_modified = self._build_atmosphere(cust_pro_ray, rm_gaz_abs=True)
-        print("Created atmosphere without gaseous absorption.")
-        return atm_modified
-
-    def create_atm_no_abs_and_ray(self) -> AtmAFGL:
-        """Returns an atmosphere without gaseous and Rayleigh absorption."""
-        atm_modified = self._build_atmosphere(rm_gaz_abs=True, rm_ray_abs=True)
-        print("Created atmosphere without gaseous / Rayleigh absorption.")
-        return atm_modified
-
-    def _build_aer_list(self) -> List[AerOPAC]:
-        """Creates the list of AerOPAC components for each aot value."""
-        return [AerOPAC(self.aer_type, self.aot, self.w_ref)]
-
-    def _build_atmosphere(
-            self,
-            cust_ray: np.ndarray = None,
-            **profile_modifications: Any, 
-        ) -> AtmAFGL:
+class AtmAFGLFactory:
+    """
+    Factory for building and grouping atmospheric LUTs (AtmAFGL) across
+    varying aerosol optical thickness and surface elevation (hmin).
+    """
+    def __init__(
+        self,
+        wl: ArrayLike,
+        grid_size: int = 100,
+        pfgrid_size: int = 10,
+    ) -> None:
         """
-        Constructs an AtmAFGL instance, optionally applying modifications to the profiles.
-        
-        Expected keyword arguments:
-         - rm_gaz_abs: if True, removes gaseous absorption.
-         - rm_ray_abs: if True, removes Rayleigh absorption.
+        Initialize with wavelengths and grid parameters.
+        :param wl: wavelengths (scalar or array-like)
+        :param grid_size: number of levels for altitude grid
+        :param pfgrid_size: number of levels for fine grid
+        :param max_bins: max groups by elevation
         """
-        if profile_modifications:
-            abs, ray, (aer, ssa_aer), phases = self.atm.calc_split(self.wl)
-            if (cust_ray is not None): 
-                ray = cust_ray
-            if profile_modifications.get('rm_ray_abs', False):
-                abs = np.zeros_like(abs)
-            if profile_modifications.get('rm_gaz_abs', False):
-                ssa_aer = np.ones_like(ssa_aer)
-            return AtmAFGL(
-                self.atmo_type,
-                pfwav=self.wl,
-                prof_abs=abs,
-                prof_ray=ray,
-                prof_aer=(aer, ssa_aer),
+        self.wl = np.asarray(wl, dtype=float)
+        self.atms: List[Atmosphere] = []
+        self.grid_size = grid_size
+        self.pfgrid_size = pfgrid_size
+
+    def compute(self, calls: List[Atmosphere], **opt) -> LUT:
+        luts = []
+        for call in calls:
+            afgl: AtmAFGL = self._atmafgl(call, **opt)
+            luts.append(afgl.calc(self.wl))
+        return multi_profiles(luts, kind="atm")
+
+    def _atmafgl(self, atm: Atmosphere, **opt) -> AtmAFGL:
+        # optional arguments
+        maja_mode = opt.get('maja', False)
+        mol_abs = opt.get("molecular_absorption", True)
+        # preparing the atmosphere description parameters
+        aer_type, aer_profile, tau_aer, tau_ray, hmin = tuple(atm)
+        grid = GRID + hmin
+        pfgrid = PFGRID + hmin
+        # creating the AerOPAC instance
+        aer_kwargs = {}
+        if (maja_mode):
+            aer_kwargs = dict(
+                H_mix_min = hmin, H_mix_max = hmin + 2000.0,
+                H_stra_min = 0.0, H_stra_max = 0.0,
+                H_free_min = 0.0, H_free_max = 0.0
+            )
+        aer = AerOPAC(aer_type, tau_aer, 550.0, **aer_kwargs)
+        # creating the afgl instance
+        atm_kwargs = dict(
+            atm_filename=aer_profile,
+            comp=[aer],
+            grid=grid,
+            pfgrid=pfgrid,
+            tauR=tau_ray
+        )
+        atm_obj = AtmAFGL(**atm_kwargs)
+        if maja_mode or not(mol_abs):
+            abs_prof, ray_prof, (a_p, ssa), phases = atm_obj.calc_split(self.wl)
+            if (maja_mode):
+                ray_prof = molecular_profile(self.wl, grid, href=8.0)
+            if not(mol_abs):
+                abs_prof = np.zeros_like(abs_prof)
+            atm_obj = AtmAFGL(
+                prof_abs=abs_prof,
+                prof_ray=ray_prof,
+                prof_aer=(a_p, ssa),
                 prof_phases=phases,
-                grid=self.grid,
-                pfgrid=self.pfgrid
-            )
-        else:
-            aer_list = self._build_aer_list()
-            return AtmAFGL(
-                self.atmo_type,
-                pfwav=self.wl,
-                comp=aer_list,
-                grid=self.grid,
-                pfgrid=self.pfgrid
-            )
+                **atm_kwargs
+            )  
+        return atm_obj        
+
+if __name__ == "__main__":
+    from smg.pipeline.preprocessor import Preprocessor
+
+    # data definition
+    wl = [443.0, 490.0, 560.0]
+    atm_type = "continental_average"
+    aer_profile = "afglms"
+    data = [
+        Atmosphere(atm_type, aer_profile, 0.0,  0.0, 0.05),
+        Atmosphere(atm_type, aer_profile, 0.0,  0.00, 0.1),
+        Atmosphere(atm_type, aer_profile, 0.0,  0.0, 0.5),
+        Atmosphere(atm_type, aer_profile, 0.5,  0.0, 0.9),
+        Atmosphere(atm_type, aer_profile, 0.5,  0.0, 1.2),
+        Atmosphere(atm_type, aer_profile, 0.0,  0.5, 1.7),
+        Atmosphere(atm_type, aer_profile, 0.0,  0.5, 2.1),
+        Atmosphere(atm_type, aer_profile, 0.5,  0.5, 4.1),
+    ]
+
+    # grouping data
+    preproc: Preprocessor = Preprocessor(Atmosphere, "hmin", 1.0)
+    groups = preproc.get_groups(data)
+    for group in groups:
+        print(f"Group ({preproc.group_key}={preproc._get_value(group[0], preproc.group_key)}):")
+        for item in group:
+            print("  ", item)
+
+    # building atmospheres
+    factory: AtmAFGLFactory = AtmAFGLFactory(wl)
+    afgl_list = []
+    for group in groups:
+        afgl = factory.compute(group)
+        afgl_list.append(afgl)
+
+        m = Smartg(autoinit=True).run(wl=afgl.axes["wavelength"], THVDEG=60., atm=afgl, NBPHOTONS=1e9)
+        print(m)
+    #input_view(m, kind='atm', zmax=50)
+    #plt.show()
+
