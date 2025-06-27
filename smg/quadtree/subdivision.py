@@ -2,7 +2,7 @@
 # Loading useful modules                                                   #
 ############################################################################
 from typing import List, Callable, Any, Tuple, Dict
-from smg.classes.pixel import Pixel
+from smg.quadtree.pixel import Pixel
 import numpy as np
 import logging
 logger = logging.getLogger(__name__)
@@ -117,51 +117,3 @@ def extract_pixel_centers(
     centers = np.array([[p.mx, p.my] for p in pixels])
     values = np.array([p.values[4] for p in pixels])
     return centers, values
-
-
-if __name__ == "__main__":
-
-    from smartg.smartg import LambSurface, Albedo_cst, Environment
-    from smartg.atmosphere import AerOPAC, AtmAFGL
-    from smg.classes.custenv import custom_environment
-    from smg.classes.sunsat import SunSat
-    from smg.quadtree.templates import rho_toa
-    from general.plot2d import show_quadtree_pixels
-    import matplotlib.pyplot as plt
-
-    sunsat = SunSat()
-    aer = AerOPAC("continental_average", 0.2, 550.0)
-    atm = AtmAFGL("afglms", [aer], grid=np.linspace(100., 0., 101))
-
-    surface = LambSurface(ALB=Albedo_cst(1.0))
-    #environment = Environment(ENV=2, ENV_SIZE=15**2)
-
-    x_coords = np.linspace(-50, 50, 1000)
-    y_coords = x_coords
-    xx, yy = np.meshgrid(x_coords, y_coords)
-    r_coords = np.sqrt(xx**2 + yy**2)
-    arr = np.exp(-(r_coords/15)**2)
-    environment = custom_environment(
-        x_coords=x_coords,
-        y_coords=y_coords,
-        rhos=arr,
-        n_alb=100
-    )
-    func_kwargs = dict(wavelength=550.0,
-                        nb_photons=1E4,
-                        sunsat=sunsat,
-                        atmosphere=atm,
-                        surface=surface,
-                        environment=environment)
-
-    lim = 50
-    root_pixel = Pixel(-lim, lim, -lim, lim, 0, 0, 0, 0.05)
-
-    min_depth = int(np.ceil(np.log2((2 * lim) / 5.0)))
-    max_depth = int(np.ceil(np.log2((2 * lim) / 0.1)))
-    root_pixel.min_depth = min_depth
-    root_pixel.max_depth = max_depth
-
-    pixels = run_quadtree_subdivision(root_pixel, rho_toa, **func_kwargs)
-    show_quadtree_pixels(pixels)
-    plt.show()
