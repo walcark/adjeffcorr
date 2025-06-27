@@ -1,7 +1,19 @@
-from smartg.smartg import Sensor
+from collections import namedtuple
 from dataclasses import dataclass
 from typing import Dict, Tuple
 import numpy as np
+
+from smartg.smartg import Sensor
+
+
+Atmosphere = namedtuple('Atmosphere', ['aer_type', 'aer_profile', 
+                                       'tau_aer', 'tau_ray', 
+                                       'hmin'])
+
+Radiatives = namedtuple("Radiatives", ('rho_atm', 'tdir_up', 
+                                       'tdir_down', 'tdif_up', 
+                                       'tdif_down', 'sph_alb'))
+
 
 @dataclass 
 class SunSat: 
