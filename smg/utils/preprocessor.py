@@ -1,6 +1,7 @@
 from collections import defaultdict
 import numpy as np
 
+
 class Preprocessor:
     """
     Preprocesses a collection of namedtuple or dict data points by grouping them according to a specified key.
@@ -23,16 +24,13 @@ class Preprocessor:
         # ]
     """
     def __init__(self, tuple_class, group_key: str, delta: float | None = None):
-        """
-        :param tuple_class: namedtuple class used for input data points
-        :param group_key: field name by which to group data points
-        :param delta: optional discretization step for numeric grouping key values
-        """
         self.tuple_class = tuple_class
         self.group_key = group_key
         self.delta = delta
         if group_key not in tuple_class._fields:
-            raise KeyError(f"group_key '{group_key}' not in tuple fields {tuple_class._fields}")
+            raise KeyError(
+                f"group_key '{group_key}' not in tuple fields {tuple_class._fields}"
+            )
 
     def _get_value(self, point, key: str):
         """
@@ -95,6 +93,7 @@ class Preprocessor:
             normalized = [self._set_value(pt, self.group_key, avg_value) for pt in points]
             result.append(normalized)
         return result
+
 
 # Demonstration block (optional)
 if __name__ == '__main__':
